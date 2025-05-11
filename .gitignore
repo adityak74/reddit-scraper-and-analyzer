@@ -1,0 +1,11 @@
+venv
+*.pyc
+*.lock
+.astro
+__pycache__
+*.egg-info
+*.egg
+*.db
+*.csv
+*.duckdb
+*.parquet
