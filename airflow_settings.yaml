@@ -7,19 +7,28 @@
 
 airflow:
   connections:
-    - conn_id:
-      conn_type:
+    - conn_id: ollama
+      conn_type: http
+      conn_host: localhost
+      conn_schema: http
+      conn_login:
+      conn_password:
+      conn_port: 11434
+      conn_extra:
+        model_name: llama2
+    - conn_id: duckdb
+      conn_type: duckdb
       conn_host:
       conn_schema:
       conn_login:
       conn_password:
       conn_port:
       conn_extra:
-        example_extra_field: example-value
+        database_path: /usr/local/airflow/dags/data/eb1a_threads_data.duckdb
   pools:
-    - pool_name:
-      pool_slot:
-      pool_description:
+    - pool_name: ai_analysis_pool
+      pool_slot: 5
+      pool_description: Pool for AI analysis tasks
   variables:
-    - variable_name:
-      variable_value:
+    - variable_name: reddit_db_path
+      variable_value: /usr/local/airflow/dags/data/eb1a_threads_data.duckdb

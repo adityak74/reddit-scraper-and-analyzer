@@ -9,6 +9,8 @@ The DAG saves data to both:
 1. Inside the container: /usr/local/airflow/data/ (accessible only from within the container)
 2. To the mounted volume: /usr/local/airflow/dags/data/ (synced to your local machine)
 
+The data is also processed into a DuckDB database for easier querying and analysis.
+
 The DAG uses PRAW (Python Reddit API Wrapper) to interact with the Reddit API
 and includes proper rate limiting to avoid API throttling.
 
@@ -16,6 +18,7 @@ Dependencies:
 - praw
 - pandas
 - python-dotenv
+- duckdb
 """
 
 from airflow import DAG
@@ -33,7 +36,6 @@ default_args = {
     'email_on_retry': False,
     'retries': 3,
     'retry_delay': timedelta(minutes=5),
-    'schedule_interval': '@daily',
 }
 
 # Define the DAG
@@ -51,7 +53,7 @@ def check_dependencies(**kwargs):
     """
     Check if all required dependencies are installed
     """
-    required_packages = ['praw', 'pandas', 'dotenv']
+    required_packages = ['praw', 'pandas', 'dotenv', 'duckdb']
     missing_packages = []
     
     for package in required_packages:
@@ -133,7 +135,7 @@ def scrape_reddit_data(**kwargs):
         # Convert config_vars to Config object
         config = Config(**config_vars)
         
-        POSTS_LIMIT = 10_000  # Set the limit for the number of posts to scrape
+        POSTS_LIMIT = 10  # Set the limit for the number of posts to scrape
         
         # Initialize Reddit API client
         reddit = praw.Reddit(
@@ -329,6 +331,144 @@ def process_data_summary(**kwargs):
         logging.error(f"Failed to process data summary: {e}")
         raise
 
+def process_csv_to_duckdb(**kwargs):
+    """
+    Process the CSV data into a DuckDB database for easier querying and analysis.
+    Based on the existing parse_dbt_csv.py script.
+    """
+    try:
+        import duckdb
+        import pandas as pd
+        import os
+        
+        # Get file paths from XCom
+        ti = kwargs['ti']
+        output_files = ti.xcom_pull(key='output_files', task_ids='scrape_reddit_data_task')
+        
+        # Set paths for source and target files
+        airflow_home = os.environ.get('AIRFLOW_HOME', '.')
+        
+        # Use the host-accessible path as the source CSV
+        source_csv = output_files.get('host_file')
+        
+        # Set target DuckDB paths (both in container and host-accessible)
+        container_db_path = os.path.join(airflow_home, 'data', 'eb1a_threads_data.duckdb')
+        host_db_path = os.path.join(airflow_home, 'dags', 'data', 'eb1a_threads_data.duckdb')
+        project_root_db_path = os.path.join(airflow_home, 'eb1a_threads_data.duckdb')
+        
+        # Use the first available path
+        if os.path.exists(source_csv):
+            logging.info(f"Loading data from {source_csv}")
+            target_db = host_db_path  # Prefer the host-accessible path
+        else:
+            # Try container path as fallback
+            container_csv = output_files.get('container_file')
+            if os.path.exists(container_csv):
+                source_csv = container_csv
+                target_db = container_db_path
+                logging.info(f"Using container CSV path: {source_csv}")
+            else:
+                error_msg = f"CSV file not found at any location"
+                logging.error(error_msg)
+                raise FileNotFoundError(error_msg)
+        
+        logging.info(f"Source CSV: {source_csv}")
+        logging.info(f"Target DB: {target_db}")
+        
+        # Load the CSV file into a DataFrame
+        data = pd.read_csv(source_csv)
+        
+        # Create a connection to the DuckDB database
+        conn = duckdb.connect(target_db)
+        
+        # Drop tables if they exist to start fresh
+        conn.execute("DROP TABLE IF EXISTS posts;")
+        conn.execute("DROP TABLE IF EXISTS comments;")
+        
+        # Separate posts and comments from the DataFrame
+        posts = data[data['Type'] == 'Post'].copy()  # Use .copy() to avoid SettingWithCopyWarning
+        post_data = posts[['Post_id', 'Title', 'Author', 'Timestamp', 'Text', 'Score', 'Total_comments', 'Post_URL']]
+        
+        comments = data[data['Type'] == 'Comment'].copy()
+        comments = comments.reset_index(drop=True)
+        comments['Comment_id'] = range(1, len(comments) + 1)
+        comment_data = comments[['Comment_id', 'Post_id', 'Author', 'Timestamp', 'Text', 'Score']]
+        
+        # Convert types to ensure compatibility
+        post_data.loc[:, 'Post_id'] = post_data['Post_id'].astype(str)
+        post_data.loc[:, 'Timestamp'] = pd.to_datetime(pd.to_numeric(post_data['Timestamp'], errors='coerce'), unit='s', errors='coerce')
+        
+        comment_data.loc[:, 'Post_id'] = comment_data['Post_id'].astype(str)
+        comment_data.loc[:, 'Timestamp'] = pd.to_datetime(comment_data['Timestamp'], errors='coerce')
+        
+        # Register the DataFrames as DuckDB views
+        conn.register("post_data_view", post_data)
+        conn.register("comment_data_view", comment_data)
+        
+        # Create tables directly from the views
+        conn.execute("CREATE TABLE posts AS SELECT * FROM post_data_view")
+        conn.execute("CREATE TABLE comments AS SELECT * FROM comment_data_view")
+        
+        # Execute a sample query to verify the data was inserted
+        post_count = conn.execute("SELECT COUNT(*) FROM posts").fetchone()[0]
+        comment_count = conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0]
+        
+        logging.info(f"Successfully inserted {post_count} posts and {comment_count} comments into DuckDB.")
+        
+        # Example queries to demonstrate the relationship between posts and comments
+        logging.info("\nExample of posts with their comments:")
+        result = conn.execute("""
+        SELECT p.Post_id, p.Title, p.Author as PostAuthor, 
+               c.Comment_id, c.Author as CommentAuthor, c.Text as CommentText
+        FROM posts p
+        JOIN comments c ON p.Post_id = c.Post_id
+        LIMIT 5
+        """).fetchall()
+        
+        if result:
+            for row in result:
+                logging.info(f"Post {row[0]}: '{row[1]}' by {row[2]}")
+                logging.info(f"   Comment {row[3]}: by {row[4]}")
+                comment_text = row[5]
+                if comment_text and len(str(comment_text)) > 100:
+                    comment_text = str(comment_text)[:100] + "..."
+                logging.info(f"   Text: {comment_text}")
+        else:
+            logging.info("No joined post-comment data found.")
+        
+        # Close the connection
+        conn.close()
+        
+        # Also save to project root and other locations for accessibility
+        try:
+            # Copy the DuckDB file to the project root for easier access
+            import shutil
+            shutil.copy2(target_db, project_root_db_path)
+            logging.info(f"DuckDB file also copied to project root: {project_root_db_path}")
+            
+            # If we used the host path, also copy to container path for completeness
+            if target_db == host_db_path:
+                os.makedirs(os.path.dirname(container_db_path), exist_ok=True)
+                shutil.copy2(target_db, container_db_path)
+                logging.info(f"DuckDB file also copied to container path: {container_db_path}")
+        except Exception as e:
+            logging.warning(f"Could not copy DuckDB file to additional locations: {e}")
+        
+        logging.info("ETL process completed. Data has been loaded into DuckDB.")
+        
+        # Return the paths for reference
+        return {
+            "duckdb_path": target_db,
+            "root_duckdb_path": project_root_db_path,
+            "post_count": post_count,
+            "comment_count": comment_count
+        }
+    except ImportError as e:
+        logging.error(f"Failed to import required module for DuckDB processing: {e}")
+        raise
+    except Exception as e:
+        logging.error(f"Failed to process CSV to DuckDB: {e}")
+        raise
 
 # Create the tasks
 check_dependencies_task = PythonOperator(
@@ -359,5 +499,12 @@ process_data_summary_task = PythonOperator(
     dag=dag,
 )
 
+# Add new task to process CSV to DuckDB
+process_csv_to_duckdb_task = PythonOperator(
+    task_id='process_csv_to_duckdb_task',
+    python_callable=process_csv_to_duckdb,
+    dag=dag,
+)
+
 # Set task dependencies
-check_dependencies_task >> load_config_task >> scrape_reddit_data_task >> process_data_summary_task
+check_dependencies_task >> load_config_task >> scrape_reddit_data_task >> process_data_summary_task >> process_csv_to_duckdb_task

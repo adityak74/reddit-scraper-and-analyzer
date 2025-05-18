@@ -5,3 +5,7 @@ praw
 pandas
 python-dotenv
 duckdb
+apache-airflow-providers-openai
+ollama
+airflow-ai-sdk[openai]
+pydantic_ai
