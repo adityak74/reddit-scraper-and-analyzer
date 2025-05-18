@@ -579,7 +579,7 @@ def generate_insights_report(data_summary=None, sentiment_results=None, topic_re
     catchup=False,
     tags=['reddit_analysis', 'ollama', 'ai'],
     start_date=pendulum.datetime(2024, 1, 1, tz="UTC"),
-    max_active_tasks=3,
+    max_active_tasks=2,
 )
 def reddit_analyzer():
     # Task flow
