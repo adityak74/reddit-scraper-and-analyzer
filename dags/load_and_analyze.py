@@ -43,7 +43,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 # Configure the model to use Ollama
 model = OpenAIModel(
-    model_name="llama3.1:8b",
+    model_name="llama3.1:70b-instruct-q2_K",
     provider=OpenAIProvider(
         # Using the localhost URL since Ollama is running locally
         base_url="http://host.docker.internal:11434/v1"
@@ -579,7 +579,7 @@ def generate_insights_report(data_summary=None, sentiment_results=None, topic_re
     catchup=False,
     tags=['reddit_analysis', 'ollama', 'ai'],
     start_date=pendulum.datetime(2024, 1, 1, tz="UTC"),
-    max_active_tasks=2,
+    max_active_tasks=1,
 )
 def reddit_analyzer():
     # Task flow
