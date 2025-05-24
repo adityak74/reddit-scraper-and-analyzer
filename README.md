@@ -46,8 +46,8 @@ How to Run Locally
 
 Outputs
 -------
-- **CSV files**: Raw Reddit data in `data/eb1a_threads_data.csv`.
-- **DuckDB database**: Structured Reddit data and analysis results in `data/eb1a_threads_data.duckdb`.
+- **CSV files**: Raw Reddit data in `data/threads_data.csv`.
+- **DuckDB database**: Structured Reddit data and analysis results in `data/threads_data.duckdb`.
 - **Analysis reports**: Sentiment, topic, and insights summaries stored in DuckDB and available for further analysis.
 
 Contact
