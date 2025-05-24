@@ -1,7 +1,7 @@
 Reddit Data Analysis Project
 ============================
 
-This project contains Apache Airflow DAGs for scraping, processing, and analyzing Reddit data, with a focus on the "eb_1a" subreddit. The analysis leverages DuckDB for storage and querying, and integrates LLM-based sentiment and topic analysis using the Airflow AI SDK with Ollama.
+This project contains Apache Airflow DAGs for scraping, processing, and analyzing Reddit data, subreddit. The analysis leverages DuckDB for storage and querying, and integrates LLM-based sentiment and topic analysis using the Airflow AI SDK with Ollama.
 
 Project Structure
 -----------------
