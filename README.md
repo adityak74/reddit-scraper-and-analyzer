@@ -6,6 +6,9 @@ This project contains Apache Airflow DAGs for scraping, processing, and analyzin
 Project Structure
 -----------------
 
+![scrape-reddit-mermaid](https://github.com/user-attachments/assets/5e3b234e-2b08-4a80-ae9b-682fcc7932cd)
+
+
 - **dags/**: Contains all Airflow DAGs for scraping, loading, and analyzing Reddit data.
     - `scrape_reddit_and_load.py`: Scrapes posts and comments from Reddit, saves to CSV, and loads into DuckDB.
     - `load_and_analyze.py`: Loads Reddit data from DuckDB, performs LLM-based sentiment and topic analysis, and stores results back in DuckDB.
@@ -16,6 +19,8 @@ Project Structure
 
 DAGs Overview
 -------------
+
+![load-and-analyze](https://github.com/user-attachments/assets/1280ddea-670f-49e9-bc5d-bcf2e1d734d6)
 
 ### 1. `scrape_reddit_and_load.py`
 - Scrapes posts and comments from the subreddit using the Reddit API (PRAW).
