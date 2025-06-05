@@ -1,7 +1,7 @@
 """
 ## Reddit Data Scraping DAG
 
-This DAG scrapes posts and comments from the "eb_1a" subreddit using the Reddit API
+This DAG scrapes posts and comments from the "programming" subreddit using the Reddit API
 and saves the data to a CSV file. The DAG implements checkpointing to save data every
 10 posts to prevent data loss in case of failure.
 
@@ -42,7 +42,7 @@ default_args = {
 dag = DAG(
     'reddit_scraper_dag',
     default_args=default_args,
-    description='DAG for scraping Reddit data from eb_1a subreddit',
+    description='DAG for scraping Reddit data from programming subreddit',
     # schedule_interval='@daily',
     catchup=False,
     tags=['reddit_scraping'],
@@ -115,7 +115,7 @@ def load_config(**kwargs):
 
 def scrape_reddit_data(**kwargs):
     """
-    Connect to Reddit API and scrape posts and comments from the eb_1a subreddit
+    Connect to Reddit API and scrape posts and comments from the programming subreddit
     """
     try:
         # Import required packages
@@ -146,7 +146,7 @@ def scrape_reddit_data(**kwargs):
         )
         
         # Specify the subreddit to scrape
-        subreddit = reddit.subreddit("eb_1a")
+        subreddit = reddit.subreddit("programming")
         
         # Display the name of the Subreddit
         logging.info("Display Name: %s", subreddit.display_name)

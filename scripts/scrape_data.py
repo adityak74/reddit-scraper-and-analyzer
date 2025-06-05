@@ -24,7 +24,7 @@ reddit = praw.Reddit(
 )
 
 
-subreddit = reddit.subreddit("eb_1a")
+subreddit = reddit.subreddit("programming")
 
 # Display the name of the Subreddit
 print("Display Name:", subreddit.display_name)
