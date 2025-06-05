@@ -1,10 +1,13 @@
-Reddit Data Analysis Project
+Rerbeddit Data Analysis Project
 ============================
 
 This project contains Apache Airflow DAGs for scraping, processing, and analyzing Reddit data, with a focus on the "programming" subreddit. The analysis leverages DuckDB for storage and querying, and integrates LLM-based sentiment and topic analysis using the Airflow AI SDK with Ollama.
 
 Project Structure
 -----------------
+
+![scrape-reddit-mermaid](https://github.com/user-attachments/assets/5e3b234e-2b08-4a80-ae9b-682fcc7932cd)
+
 
 - **dags/**: Contains all Airflow DAGs for scraping, loading, and analyzing Reddit data.
     - `scrape_reddit_and_load.py`: Scrapes posts and comments from Reddit, saves to CSV, and loads into DuckDB.
@@ -16,6 +19,8 @@ Project Structure
 
 DAGs Overview
 -------------
+
+![load-and-analyze](https://github.com/user-attachments/assets/1280ddea-670f-49e9-bc5d-bcf2e1d734d6)
 
 ### 1. `scrape_reddit_and_load.py`
 - Scrapes posts and comments from the "programming" subreddit using the Reddit API (PRAW).
@@ -46,8 +51,8 @@ How to Run Locally
 
 Outputs
 -------
-- **CSV files**: Raw Reddit data in `data/eb1a_threads_data.csv`.
-- **DuckDB database**: Structured Reddit data and analysis results in `data/eb1a_threads_data.duckdb`.
+- **CSV files**: Raw Reddit data in `data/threads_data.csv`.
+- **DuckDB database**: Structured Reddit data and analysis results in `data/threads_data.duckdb`.
 - **Analysis reports**: Sentiment, topic, and insights summaries stored in DuckDB and available for further analysis.
 
 Contact
